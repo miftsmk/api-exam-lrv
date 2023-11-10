@@ -31,3 +31,5 @@ Route::get('/', function () {
 // API LOGIN (username, password) > return token
 
 Route::post('/login', AuthLogin::class);
+
+Route::post('/check', AuthLogin::class);
