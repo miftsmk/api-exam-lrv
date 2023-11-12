@@ -4,6 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\api\AuthLogin;
+use App\Http\Controllers\api\CheckLogin;
+use App\Http\Controllers\api\UserLogin;
+
+use App\Http\Middleware\EnsureTokenIsValid;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +34,14 @@ Route::get('/', function () {
 
 // API LOGIN (username, password) > return token
 
-Route::post('/login', AuthLogin::class);
+Route::post('/v1/login', AuthLogin::class);
 
-Route::post('/check', AuthLogin::class);
+Route::get('/v1/check', CheckLogin::class);
+
+Route::middleware([EnsureTokenIsValid::class])->group(function () {
+    // Route::get('/v1/user', function () {
+    //     // ...
+    // });
+    Route::get('/v1/user', UserLogin::class);
+    // Route::get('/v1/user', [UserController::class, 'show']);
+});
