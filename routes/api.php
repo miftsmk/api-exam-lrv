@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\AuthLogin;
 use App\Http\Controllers\api\CheckLogin;
 use App\Http\Controllers\api\UserLogin;
+use App\Http\Controllers\api\ExamController;
 
 use App\Http\Middleware\EnsureTokenIsValid;
 
@@ -43,5 +44,7 @@ Route::middleware([EnsureTokenIsValid::class])->group(function () {
     //     // ...
     // });
     Route::get('/v1/user', UserLogin::class);
-    // Route::get('/v1/user', [UserController::class, 'show']);
+    Route::get('/v1/available_exams', [ExamController::class, 'available_exams']);
+    Route::get('/v1/ongoing_exam', [ExamController::class, 'ongoing_exam']);
+    Route::post('/v1/start_exam', [ExamController::class, 'start_exam']);
 });

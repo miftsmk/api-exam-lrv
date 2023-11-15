@@ -31,14 +31,14 @@ class EnsureTokenIsValid
             $decrypted = Crypt::decryptString($header);
             $dt = explode("|",$decrypted);
             if (count($dt) == 2) {
-                $users = DB::select('select * from users where username = ? AND ROLE="S"', [addslashes($dt[1])]);
+                $users = DB::select('select * from users where username = ? AND ROLE="S" AND islogin=?', [addslashes($dt[1]),1]);
                 if($users) {
                     $user = $users[0];
                     if ($user->login_dt == $dt[0]) {
                         // $request['user'] = $user;
                         // $request->add(['user' => $user]);
                         // $request->merge(['user' => $user]);
-                        $request->merge($this->objectToArray($user));
+                        $request->merge(['user' => $this->objectToArray($user)]);
                         // $req = new Request(['user' => $user]);
                         // $request->attributes->add(["foo" => "bar"]);
                         // return $user;

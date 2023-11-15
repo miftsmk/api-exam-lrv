@@ -20,7 +20,7 @@ class CheckLogin extends Controller
             $decrypted = Crypt::decryptString($header);
             $dt = explode("|",$decrypted);
             if (count($dt) == 2) {
-                $users = DB::select('select * from users where username = ? AND ROLE="S"', [addslashes($dt[1])]);
+                $users = DB::select('select * from users where username = ? AND ROLE="S" AND islogin=?', [addslashes($dt[1]),1]);
                 if($users) {
                     $user = $users[0];
                     if ($user->login_dt == $dt[0])
