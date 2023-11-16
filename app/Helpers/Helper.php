@@ -71,14 +71,17 @@ class Helper {
 
     static function generate_exam($qg_id) {
         // return $qg_id;
-        $dtq =  DB::select('SELECT q.id,q.q_type,q.ans,q.score,q.random,q.random_qt FROM questions q
+        $dtq =  DB::select('SELECT q.id,q.ans,q.score,q.random rand,q.random_qt rand_qt FROM questions q
         WHERE q.questiongroup_id = ?
         ORDER BY q.id ASC', [$qg_id]);
         // $dataquestion = new Collection($dtq);
         $arr_dtq = [];
         $arr_dtq_rand = [];
         foreach ($dtq as $key => $value) {
-            if ($value->random_qt == 'N') {
+            // $value->shf = $value->rand=='Y' ? 1 : 0;
+            // $value->shf = Helper::shuffle_alphabet(10);
+            $value->shf = null;
+            if ($value->rand_qt == 'N') {
                 $arr_dtq[$key+1] = $value;
             } else {
                 $arr_dtq_rand[] = $value;
@@ -92,7 +95,10 @@ class Helper {
                 $no++;
             }
         }
-        return $arr_dtq;
+        
+        return json_encode($arr_dtq);
+        // return $arr_dtq;
+        // return strlen(json_encode($arr_dtq));
         // return DB::table('questions')->select('id','q_type','ans','score','random','random_qt')->where('questiongroup_id', $qg_id);
     }
 
