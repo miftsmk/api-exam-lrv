@@ -36,7 +36,7 @@ class Helper {
 
     static function ongoing_exam($user_id) {
         $date = Carbon::now()->toDateTimeString();
-        $res = DB::select('SELECT id,user_id,es.exam_id,es.exam_id,es.starttime,es.endtime,es.e_number active_number, es.student_question question, es.calc_question_score scoring, es.score, es.temp_score
+        $res = DB::select('SELECT id,user_id,es.exam_id,es.exam_id,es.starttime,es.endtime,es.e_number active_number
         FROM examstudents es
         WHERE es.user_id = ? AND score IS NULL', [$user_id]);
         if ($res) {
@@ -71,7 +71,10 @@ class Helper {
 
     static function generate_exam($qg_id,$user_id,$exam_id,$duration) {
         // return $qg_id;
-        $dtq =  DB::select('SELECT q.id,q.ans,q.score,q.random rand,q.random_qt rand_qt FROM questions q
+        // $dtq =  DB::select('SELECT q.id,q.ans,q.score,q.random rand,q.random_qt rand_qt FROM questions q
+        // WHERE q.questiongroup_id = ?
+        // ORDER BY q.id ASC', [$qg_id]);
+        $dtq =  DB::select('SELECT q.id,q.ans `key`,q.score,q.random_qt rand_qt FROM questions q
         WHERE q.questiongroup_id = ?
         ORDER BY q.id ASC', [$qg_id]);
         // $dataquestion = new Collection($dtq);
@@ -81,9 +84,13 @@ class Helper {
             // $value->shf = $value->rand=='Y' ? 1 : 0;
             // $value->shf = Helper::shuffle_alphabet(10);
             $value->shf = null;
+            $value->point = 0;
+            $value->ans = null;
             if ($value->rand_qt == 'N') {
+                unset($value->rand_qt);
                 $arr_dtq[$key+1] = $value;
             } else {
+                unset($value->rand_qt);
                 $arr_dtq_rand[] = $value;
             }
         }
@@ -108,8 +115,13 @@ class Helper {
             'duration' => $duration,
             'student_question' => json_encode($arr_dtq)
         ];
-        $id = DB::table('examstudents')->insertGetId($arr_val);
-        return $id;
+        // $id = DB::table('examstudents')->insertGetId($arr_val);
+        $transactionResult = DB::transaction(function() use ($user_id,$arr_val) {
+            $id = DB::table('examstudents')->insertGetId($arr_val);
+            $affected = DB::table('users')->where('id', $user_id)->update(['onexam' => 1]);
+            return $id;
+        });
+        return $transactionResult;
 
         // return $arr_dtq;
         // return strlen(json_encode($arr_dtq));
@@ -126,10 +138,84 @@ class Helper {
         return $count;
     }
 
-    static function shuffle_alphabet($number) {
+    static function get_question($number,$arr_qt,$examstudentid,$answer) {
+        $q_dt = DB::table('questions')
+            ->select('id','questiongroup_id','img_q1','img_q1','audio_q1','question','ans_a','ans_b','ans_c','ans_d','ans_e','img_ans_a','img_ans_b','img_ans_c','img_ans_d','img_ans_e','ans_esy','q_type','ans','score','random','random_qt')
+            ->where('id', $arr_qt[$number]['id'])->first();
+        $numb_ans = 5;
+        if ((is_null($q_dt->ans_e) || $q_dt->ans_e=='') && (is_null($q_dt->img_ans_e) || $q_dt->img_ans_e=='')) {
+            $numb_ans = 4;
+        }
+        if ((is_null($q_dt->ans_d) || $q_dt->ans_d=='') && (is_null($q_dt->img_ans_d) || $q_dt->img_ans_d=='') && (is_null($q_dt->ans_e) || $q_dt->ans_e=='') && (is_null($q_dt->img_ans_e) || $q_dt->img_ans_e=='')) {
+            $numb_ans = 3;
+        }
+        if (is_null($arr_qt[$number]['shf'])) {
+            $arr_qt[$number]['shf'] = ($q_dt->random == 'Y') ? Helper::shuffle_alphabet($numb_ans,true) : Helper::shuffle_alphabet($numb_ans,false) ;
+        }
+
+        $helpme = str_split(Helper::shuffle_alphabet($numb_ans,false));
+        $helpme_rand = str_split($arr_qt[$number]['shf']);
+        $arr_question = [
+            'number' => $number,
+            'img_q1' => $q_dt->img_q1,
+            'audio_q1' => $q_dt->audio_q1,
+            'question' => $q_dt->question,
+            'score' => $q_dt->score
+        ];
+
+        // $arr_qt[$number]['point'] = 0;
+        if ($answer) {
+            $arr_qt[$number]['point'] = 0;
+            $arr_qt[$number]['ans'] = $answer;
+        }
+        
+        // Cocokkan Jawaban
+        foreach ($helpme as $k => $v) {
+            $arr_question[$v] = $q_dt->{'ans_'.$helpme_rand[$k]};
+            $arr_question['img_'.$v] = $q_dt->{'img_ans_'.$helpme_rand[$k]};
+            if ($answer && strtolower($answer) == strtolower($v) && ($helpme_rand[$k] == strtolower($arr_qt[$number]['key']))) {
+                
+                $arr_qt[$number]['point'] = $arr_qt[$number]['score'];
+            }
+        }
+        // $arr_question['number'] = $number;
+        $arr_question['ans'] = $arr_qt[$number]['ans'];
+        // update examstudents
+        $affected = DB::table('examstudents')->where('id', $examstudentid)->update(['student_question' => $arr_qt,'e_number' => $number]);
+        // return $arr_qt[$number];
+        return $arr_question;
+        // {
+        //     "id": 68,
+        //     "questiongroup_id": 2,
+        //     "img_q1": null,
+        //     "audio_q1": null,
+        //     "question": "<div>Perwujudan waasan nusantara di bidang sosial budaya tampak dalam pernyataan....</div>                            \r\n                          ",
+        //     "ans_a": "Pemilu harus dilaksanakan secara jurdil\r",
+        //     "ans_b": "Ormas dan parpol yang berkembang harus berdasar Pancasila\r",
+        //     "ans_c": "Dalam menyelesaikan masalah diutamakan melalui musyawarah mufakat\r",
+        //     "ans_d": "Bahwa ideologi Indonesia adalah pancasila\r",
+        //     "ans_e": "Bahwa perekonomian disusun sebagai usaha bersama berdasar asas kekeluargaan",
+        //     "img_ans_a": null,
+        //     "img_ans_b": null,
+        //     "img_ans_c": null,
+        //     "img_ans_d": null,
+        //     "img_ans_e": null,
+        //     "ans_esy": null,
+        //     "q_type": null,
+        //     "ans": "C",
+        //     "score": 1,
+        //     "random": "Y",
+        //     "random_qt": "Y"
+        // }
+    }
+
+    static function shuffle_alphabet($number,$shf) {
         $str = '';
         for ($i = 0; $i < $number; $i++) {
             $str .= chr(97+$i);
+        }
+        if (!$shf) {
+            return $str;
         }
         return str_shuffle($str);
     }

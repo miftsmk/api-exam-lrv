@@ -47,4 +47,5 @@ Route::middleware([EnsureTokenIsValid::class])->group(function () {
     Route::get('/v1/available_exams', [ExamController::class, 'available_exams']);
     Route::get('/v1/ongoing_exam', [ExamController::class, 'ongoing_exam']);
     Route::post('/v1/start_exam', [ExamController::class, 'start_exam']);
+    Route::post('/v1/question', [ExamController::class, 'question']);
 });

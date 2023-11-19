@@ -38,10 +38,26 @@ class EnsureTokenIsValid
                         // $request['user'] = $user;
                         // $request->add(['user' => $user]);
                         // $request->merge(['user' => $user]);
-                        $request->merge(['user' => $this->objectToArray($user)]);
+                        // $request->merge(['user' => $this->objectToArray($user)]);
+                        $arruser = $this->objectToArray($user);
+                        if ($user->onexam) {
+                            // $examstudent = DB::table('examstudents')->where('user_id', $user->id)->whereNull('submit_time')->first();
+                            $examdata = DB::table('examstudents')
+                                                    ->select('id','exam_id', 'starttime', 'endtime', 'duration','e_number','student_question','submit_time')
+                                                    ->where('user_id', $user->id)->whereNull('submit_time')->first();
+                            if ($examdata) {
+                                $arruser['examdata'] = $examdata;
+                            } else {
+                                $arruser['onexam'] = 0;
+                                $affected = DB::table('users')->where('id', $user->id)->update(['onexam' => 0]);
+                            }
+                            
+                        }
+                        
+                        $request->merge(['user' => $arruser]);
                         // $req = new Request(['user' => $user]);
                         // $request->attributes->add(["foo" => "bar"]);
-                        // return $user;
+                        // return $request->all();
                         // $requests = Request::create(uri: 'my-api-address');
                         // $request->data->add(['key => 'value']); 
                         return $next($request);
@@ -49,7 +65,7 @@ class EnsureTokenIsValid
                 }
             }
         } 
-        $resp = ['failed' => 'Token InValid'];
+        $resp = ['error' => 'Token Tidak Valid'];
         return response()->json($resp, Response::HTTP_UNAUTHORIZED);
  
         // return $next($request);
