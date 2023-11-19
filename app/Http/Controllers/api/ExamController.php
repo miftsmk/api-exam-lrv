@@ -40,6 +40,7 @@ class ExamController extends Controller {
             return response()->json($resp, Response::HTTP_BAD_REQUEST);
         }
         $count = Helper::check_exam_status($request->exam_id,$request->user['id']);
+        // return $count;
         // return $request->all();
         if (!$count && is_numeric($request->exam_id)) {
             // boleh diakses ?
@@ -73,23 +74,56 @@ class ExamController extends Controller {
         $resp = ['status' => '1', 'message' => 'ujian sedang berlangsung'];
         // # jika tidak ada post ambil soal
         $number = isset($request->number) ? $request->number : $request->user['examdata']->e_number;
+        $doubt = isset($request->doubt) ? 1 : 0;
         $question = null;
         $questions = json_decode($request->user['examdata']->student_question,true);
         if (!isset($request->answer)) {
-            $question = Helper::get_question($number,$questions,$request->user['examdata']->id,null);
+            $question = Helper::get_question($number,$questions,$request->user['examdata']->id,null,$doubt);
         } else {
-            $jawaban = substr(trim($request->answer),0,1);
-            $question = Helper::get_question($number,$questions,$request->user['examdata']->id,$jawaban);
+            $jawaban = strtolower(substr(trim($request->answer),0,1));
+            $question = Helper::get_question($number,$questions,$request->user['examdata']->id,$jawaban,$doubt);
         }
-        return $question;
-        // return $questions[$number];
-        // # jika cuma post number ambil soal nomer tersebut dan update nomer
-        // # jika hanya post answer, isi jawaban dan hitung nilai
-        // # jika post answer dan number isi jawaban nomer yang dipost dan hitung nilai 
-        
+        // return $question;
+        $resp['data'] = $question;
+        return response()->json($resp, Response::HTTP_OK);
+    }
+
+    public function progress_list(Request $request) {
+        $data = json_decode($request->user['examdata']->student_question,true);
+        $res = [];
+        foreach ($data as $key => $value) {
+            $res[$key]['score'] = $value['score'];
+            $res[$key]['answer'] = $value['ans'];
+            $res[$key]['doubt'] = $value['doubt'];
+        }
+        $resp['data'] = $res;
+        return response()->json($resp, Response::HTTP_OK);
+    }
+
+    public function finish(Request $request) {
+        // return $request->user;
+        if (!$request->user['onexam']) {
+            $resp['error'] = "Tidak ada ujian yang sedang berlangsung";
+            return response()->json($resp, Response::HTTP_BAD_REQUEST);
+        }
+        if (isset($request->approve) && $request->approve == 1) {
+            $res = Helper::finish_exam($request->user['id'],$request->user['examdata']->id);
+            $resp = ['status' => '1', 'message' => 'ujian berhasil diakhiri'];
+            return response()->json($resp, Response::HTTP_OK);
+        }
+        $resp = ['status' => '0', 'message' => 'ujian batal diakhiri'];
         return response()->json($resp, Response::HTTP_OK);
         
+    }
 
-
+    public function logout(Request $request) {
+        if ($request->user['id']) {
+            // return $request->all();
+            $affected = Helper::logout($request->user['id']);
+            $resp = ['status' => '1', 'message' => 'Logout Berhasil'];
+            return response()->json($resp, Response::HTTP_OK);
+        }
+        $resp = ['status' => '0', 'message' => 'Logout Gagal'];
+        return response()->json($resp, Response::HTTP_OK);
     }
 }

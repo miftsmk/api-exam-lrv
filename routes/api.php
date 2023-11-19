@@ -48,4 +48,7 @@ Route::middleware([EnsureTokenIsValid::class])->group(function () {
     Route::get('/v1/ongoing_exam', [ExamController::class, 'ongoing_exam']);
     Route::post('/v1/start_exam', [ExamController::class, 'start_exam']);
     Route::post('/v1/question', [ExamController::class, 'question']);
+    Route::get('/v1/progress', [ExamController::class, 'progress_list']);
+    Route::post('/v1/finish', [ExamController::class, 'finish']);
+    Route::get('/v1/logout', [ExamController::class, 'logout']);
 });

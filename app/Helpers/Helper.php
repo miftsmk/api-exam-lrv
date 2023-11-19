@@ -38,7 +38,7 @@ class Helper {
         $date = Carbon::now()->toDateTimeString();
         $res = DB::select('SELECT id,user_id,es.exam_id,es.exam_id,es.starttime,es.endtime,es.e_number active_number
         FROM examstudents es
-        WHERE es.user_id = ? AND score IS NULL', [$user_id]);
+        WHERE es.user_id = ? AND submit_time IS NULL', [$user_id]);
         if ($res) {
             $res[0]->status = $date >= $res[0]->endtime ? 'overtime' : 'ongoing';
         }
@@ -84,6 +84,7 @@ class Helper {
             // $value->shf = $value->rand=='Y' ? 1 : 0;
             // $value->shf = Helper::shuffle_alphabet(10);
             $value->shf = null;
+            $value->doubt = false;
             $value->point = 0;
             $value->ans = null;
             if ($value->rand_qt == 'N') {
@@ -133,12 +134,12 @@ class Helper {
         $count = DB::table('examstudents')->where('exam_id', $exam_id)->where('user_id', $user_id)->count();
         if (!$count) {
             // jika masih mengerjakan
-            $count = DB::table('examstudents')->whereNotNull('submit_time')->where('user_id', $user_id)->count();
+            $count = DB::table('examstudents')->whereNull('submit_time')->where('user_id', $user_id)->count();
         }
         return $count;
     }
 
-    static function get_question($number,$arr_qt,$examstudentid,$answer) {
+    static function get_question($number,$arr_qt,$examstudentid,$answer=null,$doubt=0) {
         $q_dt = DB::table('questions')
             ->select('id','questiongroup_id','img_q1','img_q1','audio_q1','question','ans_a','ans_b','ans_c','ans_d','ans_e','img_ans_a','img_ans_b','img_ans_c','img_ans_d','img_ans_e','ans_esy','q_type','ans','score','random','random_qt')
             ->where('id', $arr_qt[$number]['id'])->first();
@@ -168,20 +169,35 @@ class Helper {
             $arr_qt[$number]['point'] = 0;
             $arr_qt[$number]['ans'] = $answer;
         }
+
+        if ($doubt) {
+            $arr_qt[$number]['doubt'] = !$arr_qt[$number]['doubt'];
+        }
         
         // Cocokkan Jawaban
         foreach ($helpme as $k => $v) {
             $arr_question[$v] = $q_dt->{'ans_'.$helpme_rand[$k]};
             $arr_question['img_'.$v] = $q_dt->{'img_ans_'.$helpme_rand[$k]};
-            if ($answer && strtolower($answer) == strtolower($v) && ($helpme_rand[$k] == strtolower($arr_qt[$number]['key']))) {
-                
+            if ($answer && strtolower($answer) == strtolower($v) && ($helpme_rand[$k] == strtolower($arr_qt[$number]['key']))) { 
                 $arr_qt[$number]['point'] = $arr_qt[$number]['score'];
             }
         }
         // $arr_question['number'] = $number;
         $arr_question['ans'] = $arr_qt[$number]['ans'];
+        
+        // Hitung Score
+        $tot_score = 0;
+        $tot_point = 0;
+        foreach ($arr_qt as $key => $value) {
+            $tot_score+=$value['score'];
+            $tot_point+=$value['point'];
+        }
+        $nilai_akhir = round(($tot_point*100)/$tot_score,2);
+        $arr_question['max_score'] = $tot_score;
+        // $arr_question['tot_point'] = $tot_point;
+        // $arr_question['nilai_akhir'] = $nilai_akhir;
         // update examstudents
-        $affected = DB::table('examstudents')->where('id', $examstudentid)->update(['student_question' => $arr_qt,'e_number' => $number]);
+        $affected = DB::table('examstudents')->where('id', $examstudentid)->update(['student_question' => json_encode($arr_qt),'e_number' => $number,'score' => $nilai_akhir,'temp_score' => $nilai_akhir]);
         // return $arr_qt[$number];
         return $arr_question;
         // {
@@ -207,6 +223,16 @@ class Helper {
         //     "random": "Y",
         //     "random_qt": "Y"
         // }
+    }
+
+    static function finish_exam($user_id,$examstudent_id) {
+        $affected = DB::table('users')->where('id', $user_id)->update(['onexam' => 0]);
+        if ($affected)
+            return DB::table('examstudents')->where('id', $examstudent_id)->update(['submit_time' => Carbon::now()->toDateTimeString()]); 
+    }
+
+    static function logout($user_id) {
+        return DB::table('users')->where('id', $user_id)->update(['islogin' => 0, 'login_dt' => null]);
     }
 
     static function shuffle_alphabet($number,$shf) {

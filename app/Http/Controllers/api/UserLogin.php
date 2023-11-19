@@ -22,7 +22,10 @@ class UserLogin extends Controller
         $datauser = $datauser->merge(['class' => $clas->makeHidden(['timestamp','id'])->toArray()]);
         $datauser = $datauser->merge(['room' => $room->makeHidden(['id'])->toArray()]);
         // $examdata = $datauser['examdata']; //student_question
-        unset($datauser['examdata']->student_question);
+        if (isset($datauser['examdata'])) {
+            unset($datauser['examdata']->student_question);
+        }
+        
         $datauser = $datauser->except(['id','examgrouptype_id','password','pass_txt','timestamp','login_dt','islogin','role','class_id']);
         
         // return $request;
