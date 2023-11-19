@@ -69,7 +69,7 @@ class Helper {
         return count($res) ? $res[0] : false;
     }
 
-    static function generate_exam($qg_id) {
+    static function generate_exam($qg_id,$user_id,$exam_id,$duration) {
         // return $qg_id;
         $dtq =  DB::select('SELECT q.id,q.ans,q.score,q.random rand,q.random_qt rand_qt FROM questions q
         WHERE q.questiongroup_id = ?
@@ -95,15 +95,35 @@ class Helper {
                 $no++;
             }
         }
-        
-        return json_encode($arr_dtq);
+
+        $now = Carbon::now();
+        $starttime = $now->toDateTimeString();
+        $endtime = $now->addMinutes($duration)->toDateTimeString();
+        // $arr_dtq > generate exam random 
+        $arr_val = [
+            'user_id' => $user_id, 
+            'exam_id' => $exam_id,
+            'starttime' => $starttime,
+            'endtime' => $endtime,
+            'duration' => $duration,
+            'student_question' => json_encode($arr_dtq)
+        ];
+        $id = DB::table('examstudents')->insertGetId($arr_val);
+        return $id;
+
         // return $arr_dtq;
         // return strlen(json_encode($arr_dtq));
         // return DB::table('questions')->select('id','q_type','ans','score','random','random_qt')->where('questiongroup_id', $qg_id);
     }
 
     static function check_exam_status($exam_id,$user_id) {
-        return DB::table('examstudents')->where('exam_id', $exam_id)->where('user_id', $user_id)->count();
+        // jika sudah mengerjakan
+        $count = DB::table('examstudents')->where('exam_id', $exam_id)->where('user_id', $user_id)->count();
+        if (!$count) {
+            // jika masih mengerjakan
+            $count = DB::table('examstudents')->whereNotNull('submit_time')->where('user_id', $user_id)->count();
+        }
+        return $count;
     }
 
     static function shuffle_alphabet($number) {

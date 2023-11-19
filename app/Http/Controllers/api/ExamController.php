@@ -27,13 +27,14 @@ class ExamController extends Controller {
     public function start_exam(Request $request) {
         // sudah pernah mengikuti?
         // return $request->user['class_id'];
-        $count = Helper::check_exam_status($request->exam_id,$request->id);
+        $count = Helper::check_exam_status($request->exam_id,$request->user['id']);
+        // return $request->all();
         if (!$count && is_numeric($request->exam_id)) {
             // boleh diakses ?
             $exam = Helper::get_exam($request->exam_id,$request->user['class_id'],$request->user['sesi']);
             if($exam){
                 // Buat Data Ujian Siswa
-                $qt = Helper::generate_exam($exam->questiongroup_id);
+                $qt = Helper::generate_exam($exam->questiongroup_id,$request->user['id'],$exam->id,$exam->duration);
                 $resp = ['data' => $qt];
                 return response()->json($resp, Response::HTTP_OK);
             }

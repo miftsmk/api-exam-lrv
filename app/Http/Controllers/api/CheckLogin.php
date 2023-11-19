@@ -23,9 +23,10 @@ class CheckLogin extends Controller
                 $users = DB::select('select * from users where username = ? AND ROLE="S" AND islogin=?', [addslashes($dt[1]),1]);
                 if($users) {
                     $user = $users[0];
-                    if ($user->login_dt == $dt[0])
-                    $resp = ['success' => 'Token Valid'];
-                    return response()->json($resp, Response::HTTP_OK);
+                    if ($user->login_dt == $dt[0]) {
+                        $resp = ['success' => 'Token Valid'];
+                        return response()->json($resp, Response::HTTP_OK);
+                    }
                 }
             }
         } 
